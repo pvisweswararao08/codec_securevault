@@ -17,7 +17,7 @@ Default admin seeded automatically:
 
 ## 2. Open the Frontend
 
-Open [[frontend/index.html]((https://securevaultweb.edgeone.app/)) in VS Code with **Live Server** (right-click → Open with Live Server).
+Open (https://securevaultweb.edgeone.app/) in VS Code with **Live Server** (right-click → Open with Live Server).
 
 Or serve manually:
 ```powershell

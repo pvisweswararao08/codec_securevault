@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecureVault — Admin Panel</title>
+  <meta name="description" content="Admin panel for managing users and application security.">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Admin-specific: stat card colors */
+    .admin-stats .stat-card:nth-child(1) { --c: linear-gradient(135deg,#8b5cf6,#7c3aed); }
+    .admin-stats .stat-card:nth-child(2) { --c: linear-gradient(135deg,#ec4899,#db2777); }
+    .admin-stats .stat-card:nth-child(3) { --c: linear-gradient(135deg,#10b981,#059669); }
+    .admin-stats .stat-card:nth-child(4) { --c: linear-gradient(135deg,#f87171,#ef4444); }
+    .admin-stats .stat-card:nth-child(5) { --c: linear-gradient(135deg,#f59e0b,#f97316); }
+
+    /* User row — expandable */
+    .user-row-expanded {
+      background: rgba(139,92,246,0.04) !important;
+    }
+
+    .user-detail-row td {
+      padding: 0;
+      border-bottom: 1px solid var(--border-soft);
+    }
+
+    .user-detail-panel {
+      padding: 16px 20px 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+    }
+
+    .detail-item {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--r-sm);
+      padding: 12px 14px;
+    }
+
+    .detail-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    .detail-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Action dropdown */
+    .action-menu {
+      position: relative;
+      display: inline-block;
+    }
+
+    .action-menu .dropdown {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 6px);
+      background: var(--bg-elevated, #252238);
+      border: 1px solid var(--border-medium);
+      border-radius: var(--r-sm);
+      min-width: 180px;
+      box-shadow: var(--shadow-md);
+      z-index: 100;
+      display: none;
+      overflow: hidden;
+    }
+
+    .action-menu .dropdown.open { display: block; }
+
+    .dropdown-item {
+      padding: 11px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: background var(--dur-fast);
+      border: none;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+      font-family: inherit;
+    }
+
+    .dropdown-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .dropdown-item.danger:hover { background: rgba(248,113,113,0.1); color: var(--error); }
+    .dropdown-item + .dropdown-item { border-top: 1px solid var(--border-soft); }
+
+    /* Security log */
+    .log-entry {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      transition: background var(--dur-fast);
+    }
+    .log-entry:hover { background: rgba(255,255,255,0.02); }
+    .log-entry:last-child { border-bottom: none; }
+
+    .log-icon { font-size: 18px; flex-shrink: 0; margin-top: 2px; }
+
+    .log-body { flex: 1; min-width: 0; }
+    .log-event { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 3px; }
+    .log-meta  { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+
+    .log-pill {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: var(--r-full);
+      flex-shrink: 0;
+      letter-spacing: 0.04em;
+    }
+    .log-pill.success { background: rgba(52,211,153,0.12); color: var(--success); }
+    .log-pill.warning { background: rgba(251,191,36,0.12);  color: var(--warning); }
+    .log-pill.error   { background: rgba(248,113,113,0.12); color: var(--error); }
+
+    /* Tab strip for admin sections */
+    .admin-tabs {
+      display: flex;
+      gap: 2px;
+      border-bottom: 1px solid var(--border-soft);
+      margin-bottom: 28px;
+    }
+
+    .admin-tab {
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all var(--dur-fast);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .admin-tab:hover { color: var(--text-secondary); }
+    .admin-tab.active { color: var(--brand-400); border-bottom-color: var(--brand-400); }
+
+    .admin-section { display: none; }
+    .admin-section.active { display: block; }
+
+    /* OWASP checklist */
+    .owasp-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 14px;
+    }
+
+    .owasp-item-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--r-md);
+      padding: 16px 18px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      transition: all var(--dur-normal);
+    }
+    .owasp-item-card:hover { border-color: var(--border-medium); }
+
+    .owasp-status {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .owasp-status.pass { background: rgba(52,211,153,0.15); }
+    .owasp-status.warn { background: rgba(251,191,36,0.15); }
+
+    .owasp-content .owasp-id { font-size: 10px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.06em; }
+    .owasp-content .owasp-name { font-size: 13px; font-weight: 700; color: var(--text-primary); margin: 3px 0; }
+    .owasp-content .owasp-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+  </style>
+</head>
+<body>
+
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- ── Navbar ── -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <a href="dashboard.html" class="brand">
+      <div class="brand-mark">🔐</div>
+      <div><div class="brand-name">SecureVault</div></div>
+    </a>
+
+    <div class="nav-center">
+      <a href="dashboard.html" class="nav-link">
+        <span class="nav-icon">📝</span> Notes
+      </a>
+      <a href="admin.html" class="nav-link active">
+        <span class="nav-icon">🛡️</span> Admin
+      </a>
+    </div>
+
+    <div class="nav-right">
+      <span class="badge badge-admin">🛡️ Admin</span>
+      <div class="user-pill">
+        <div class="avatar" id="navAvatar" style="background:var(--grad-brand)">A</div>
+        <div class="user-info">
+          <div class="user-name" id="navUsername">Loading…</div>
+          <div class="user-role" id="navRole">Administrator</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="handleLogout()">👋 Sign out</button>
+    </div>
+  </nav>
+
+  <div class="app-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" aria-label="Admin sidebar">
+      <div class="sidebar-greeting">
+        <div class="greet-emoji">🛡️</div>
+        <div class="greet-text">Admin Panel</div>
+        <div class="greet-sub">Full system access</div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">Sections</div>
+        <div class="sidebar-link active" onclick="showSection('users')" id="sideUsers">
+          <span class="s-icon">👥</span> Users
+          <span class="s-count" id="sideUserCount">0</span>
+        </div>
+        <div class="sidebar-link" onclick="showSection('logs')" id="sideLogs">
+          <span class="s-icon">📋</span> Security Log
+        </div>
+        <div class="sidebar-link" onclick="showSection('owasp')" id="sideOwasp">
+          <span class="s-icon">🔍</span> OWASP Status
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">Quick links</div>
+        <a class="sidebar-link" href="dashboard.html">
+          <span class="s-icon">📝</span> My notes
+        </a>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="callout callout-warning" style="padding:12px; font-size:12px;">
+          <span>⚠️</span>
+          <div>
+            <div style="font-weight:600; color:var(--text-primary); margin-bottom:2px;">Production reminder</div>
+            <div style="color:var(--text-muted); font-size:11px;">Change the default admin password before going live!</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="page-content">
+
+      <!-- Page header -->
+      <div class="page-header">
+        <div class="page-eyebrow">🛡️ Administrator</div>
+        <h1 class="page-title">System <span>Admin</span></h1>
+        <p class="page-subtitle">Manage users, monitor security events, and verify OWASP compliance.</p>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row admin-stats" id="adminStats">
+        <div class="stat-card">
+          <div class="stat-emoji">👥</div>
+          <div class="stat-value" id="statTotal">–</div>
+          <div class="stat-label">Total users</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-emoji">🛡️</div>
+          <div class="stat-value" id="statAdmins">–</div>
+          <div class="stat-label">Admins</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-emoji">✅</div>
+          <div class="stat-value" id="statActive">–</div>
+          <div class="stat-label">Active</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-emoji">🔒</div>
+          <div class="stat-value" id="statLocked">–</div>
+          <div class="stat-label">Locked out</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-emoji">📝</div>
+          <div class="stat-value" id="statNotes">–</div>
+          <div class="stat-label">Total notes</div>
+        </div>
+      </div>
+
+      <!-- Admin tab strip -->
+      <div class="admin-tabs" role="tablist">
+        <button class="admin-tab active" id="tab-users" onclick="showSection('users')" role="tab">
+          👥 Users
+        </button>
+        <button class="admin-tab" id="tab-logs" onclick="showSection('logs')" role="tab">
+          📋 Security Log
+        </button>
+        <button class="admin-tab" id="tab-owasp" onclick="showSection('owasp')" role="tab">
+          🔍 OWASP
+        </button>
+      </div>
+
+      <!-- ── Users section ── -->
+      <div class="admin-section active" id="section-users">
+        <div class="toolbar" style="margin-bottom:16px;">
+          <div class="search-box">
+            <span class="s-icon">🔍</span>
+            <input type="search" id="userSearch" placeholder="Search users…" oninput="filterUsers(this.value)">
+          </div>
+          <div style="display:flex; gap:8px; margin-left:auto;">
+            <select id="roleFilter" onchange="filterUsers()" style="width:auto; padding:8px 12px; border-radius:var(--r-sm); font-size:13px;">
+              <option value="">All roles</option>
+              <option value="admin">Admin only</option>
+              <option value="user">Users only</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table role="table" aria-label="Users table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Last login</th>
+                <th>Failed logins</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr>
+                <td colspan="7" style="text-align:center; padding:40px; color:var(--text-muted);">
+                  <div class="spinner" style="margin:0 auto 12px;"></div>
+                  Loading users…
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="userPagination"></div>
+      </div>
+
+      <!-- ── Security log section ── -->
+      <div class="admin-section" id="section-logs">
+        <div class="callout callout-info" style="margin-bottom:20px;">
+          <span class="callout-icon">ℹ️</span>
+          <div class="callout-body">
+            These events are logged in the server console (stdout). In production, stream them to a SIEM like Datadog or Splunk.
+          </div>
+        </div>
+        <div class="card" style="overflow:hidden;" id="logPanel">
+          <!-- Simulated log entries since we don't persist them client-side -->
+          <div class="log-entry">
+            <span class="log-icon">✅</span>
+            <div class="log-body">
+              <div class="log-event">USER_REGISTERED — admin</div>
+              <div class="log-meta">IP 127.0.0.1 · System seed · Just now</div>
+            </div>
+            <span class="log-pill success">INFO</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-icon">🔑</span>
+            <div class="log-body">
+              <div class="log-event">LOGIN_SUCCESS — admin</div>
+              <div class="log-meta">IP 127.0.0.1 · Your current session</div>
+            </div>
+            <span class="log-pill success">OK</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-icon">🚫</span>
+            <div class="log-body">
+              <div class="log-event">Rate limit applied on /api/auth/login</div>
+              <div class="log-meta">Endpoint: POST /api/auth/login · Max: 10/min</div>
+            </div>
+            <span class="log-pill warning">LIMIT</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-icon">🔒</span>
+            <div class="log-body">
+              <div class="log-event">CSP + security headers active on all responses</div>
+              <div class="log-meta">X-Frame-Options: DENY · X-Content-Type-Options: nosniff</div>
+            </div>
+            <span class="log-pill success">ACTIVE</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-icon">🛡️</span>
+            <div class="log-body">
+              <div class="log-event">JWT blocklist check on every authenticated request</div>
+              <div class="log-meta">Tokens revoked on logout stored in token_blocklist table</div>
+            </div>
+            <span class="log-pill success">ACTIVE</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-icon">⚠️</span>
+            <div class="log-body">
+              <div class="log-event">SQL injection attempt example (blocked by ORM)</div>
+              <div class="log-meta">Input: "' OR 1=1 --" → parameterized query, no effect</div>
+            </div>
+            <span class="log-pill warning">BLOCKED</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── OWASP section ── -->
+      <div class="admin-section" id="section-owasp">
+        <div class="callout callout-success" style="margin-bottom:24px;">
+          <span class="callout-icon">✅</span>
+          <div class="callout-body">
+            <strong>OWASP Top 10 (2021) coverage status</strong> — All critical categories addressed in this application.
+          </div>
+        </div>
+        <div class="owasp-grid">
+          <div class="owasp-item-card">
+            <div class="owasp-status pass">✅</div>
+            <div class="owasp-content">
+              <div class="owasp-id">A01:2021</div>
+              <div class="owasp-name">Broken Access Control</div>
+              <div class="owasp-desc">JWT RBAC + server-side ownership checks on every resource. Admins cannot modify their own accounts.</div>
+            </div>
+          </div>
+          <div class="owasp-item-card">
+            <div class="owasp-status pass">✅</div>
+            <div class="owasp-content">
+              <div class="owasp-id">A02:2021</div>
+              <div class="owasp-name">Cryptographic Failures</div>
+              <div class="owasp-desc">bcrypt (cost 12) for passwords. Secrets in .env, never in code. HTTPS-ready (HSTS in production).</div>
+            </div>
+          </div>
+          <div class="owasp-item-card">
+            <div class="owasp-status pass">✅</div>
+            <div class="owasp-content">
+              <div class="owasp-id">A03:2021</div>
+              <div class="owasp-name">Injection</div>
+              <div class="owasp-desc">SQLAlchemy ORM with parameterized queries. Marshmallow input validation. HTML-escaping on all user text.</div>
+            </div>
+          </div>
+          <div class="owasp-item-card">
+            <div class="owasp-status pass">✅</div>
+            <div class="owasp-content">
+              <div class="owasp-id">A04:2021</div>
+              <div class="owasp-name">Insecure Design</div>
+              <div class="owasp-desc">Security-first architecture: defence in depth, least privilege roles, input validated at every layer.</div>
+            </div>
+          </div>
+          <div class="owasp-item-card">
+            <div class="owasp-status pass">✅</div>
+            <div class="owasp-content">
+              <div class="owasp-id">A05:2021</div>
+              <div class="owasp-name">Security Misconfiguration</div>
+              <div class="owasp-desc">CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy on every response.</div>
+            </div>
+          </div>
+          <div class="owasp-item-card">
+            <div class="owasp-status pass">✅</div>
+            <div class="owasp-content">
+              <div class="owasp-id">A06:2021</div>
+              <div class="owasp-name">Vulnerable Components</div>
+              <div class="owasp-desc">Pinned dependency versions in requirements.txt. Minimal surface area — only well-maintained packages.</div>
+            </div>
+          </div>
+          <div class="owasp-item-card">
+            <div class="owasp-status pass">✅</div>
+            <div class="owasp-content">
+              <div class="owasp-id">A07:2021</div>
+              <div class="owasp-name">Auth Failures</div>
+              <div class="owasp-desc">Short-lived JWTs (15 min) + refresh rotation. Server-side blocklist on logout. 5-attempt lockout (15 min).</div>
+            </div>
+          </div>
+          <div class="owasp-item-card">
+            <div class="owasp-status pass">✅</div>
+            <div class="owasp-content">
+              <div class="owasp-id">A08:2021</div>
+              <div class="owasp-name">Software Integrity</div>
+              <div class="owasp-desc">JWT signature verified on every request. Token blocklist prevents replay of revoked tokens.</div>
+            </div>
+          </div>
+          <div class="owasp-item-card">
+            <div class="owasp-status pass">✅</div>
+            <div class="owasp-content">
+              <div class="owasp-id">A09:2021</div>
+              <div class="owasp-name">Logging & Monitoring</div>
+              <div class="owasp-desc">Structured security events logged: login failures, lockouts, logouts, registrations. IPs captured.</div>
+            </div>
+          </div>
+          <div class="owasp-item-card">
+            <div class="owasp-status pass">✅</div>
+            <div class="owasp-content">
+              <div class="owasp-id">A10:2021</div>
+              <div class="owasp-name">SSRF</div>
+              <div class="owasp-desc">No server-side URL fetching. CORS restricted to configured origin only. CSP connect-src locked to self.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Security bar -->
+  <div class="sec-bar">
+    <div class="sec-item"><div class="sec-dot"></div> Admin session active</div>
+    <div class="sec-item"><div class="sec-dot"></div> RBAC enforced</div>
+    <div class="sec-item"><div class="sec-dot"></div> Rate limited</div>
+    <div class="sec-item"><div class="sec-dot"></div> All OWASP checks ✓</div>
+  </div>
+
+  <!-- User edit modal -->
+  <div class="overlay" id="editOverlay" role="dialog" aria-modal="true" aria-labelledby="editModalTitle">
+    <div class="modal" style="max-width:440px;">
+      <div class="modal-head">
+        <h3 id="editModalTitle">✏️ Edit User</h3>
+        <button class="modal-close-btn" onclick="closeEditModal()" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex; align-items:center; gap:14px; margin-bottom:8px;">
+          <div class="avatar avatar-lg" id="editAvatar" style="background:var(--grad-brand)">U</div>
+          <div>
+            <div style="font-size:17px; font-weight:700; color:var(--text-primary);" id="editUsernameLarge">Username</div>
+            <div style="font-size:13px; color:var(--text-muted);" id="editEmailLarge">email@example.com</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">🎭 Role</label>
+          <select id="editRole" style="border-radius:var(--r-sm);">
+            <option value="user">👤 User</option>
+            <option value="admin">🛡️ Admin</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label" style="margin-bottom:10px; display:block;">📊 Account status</label>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-success btn-sm" onclick="setUserStatus(true)">✅ Activate</button>
+            <button class="btn btn-danger btn-sm" onclick="setUserStatus(false)">🚫 Deactivate</button>
+          </div>
+        </div>
+
+        <input type="hidden" id="editUserId">
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveUserEdit()">💾 Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete user confirm -->
+  <div class="overlay" id="deleteUserOverlay" role="dialog" aria-modal="true">
+    <div class="modal" style="max-width:400px;">
+      <div class="modal-head">
+        <h3>🗑️ Delete User</h3>
+        <button class="modal-close-btn" onclick="closeDeleteUserModal()" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="confirm-box">
+          <div class="confirm-emoji">😬</div>
+          <p>This will permanently delete <strong id="deleteUsername">this user</strong> and all their data.</p>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="closeDeleteUserModal()">Keep them</button>
+        <button class="btn btn-danger" onclick="confirmDeleteUser()" id="confirmDeleteUserBtn">🗑️ Delete forever</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

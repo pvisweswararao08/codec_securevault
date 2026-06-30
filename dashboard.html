@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecureVault — My Notes</title>
+  <meta name="description" content="Your private, encrypted note space.">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ── FAB ─────────────────────────────────── */
+    .fab {
+      position: fixed;
+      bottom: 50px;
+      right: 32px;
+      z-index: 90;
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: var(--grad-brand);
+      border: none;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      box-shadow: var(--shadow-brand), 0 8px 24px rgba(0,0,0,0.4);
+      transition: all 220ms var(--ease-bounce);
+      color: white;
+    }
+    .fab:hover {
+      transform: scale(1.12) rotate(12deg);
+      box-shadow: 0 8px 32px rgba(139,92,246,0.55), 0 16px 48px rgba(0,0,0,0.4);
+    }
+    .fab:active { transform: scale(0.92); }
+
+    /* FAB tooltip */
+    .fab::before {
+      content: 'New note  (N)';
+      position: absolute;
+      right: calc(100% + 10px);
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--bg-raised);
+      border: 1px solid var(--border-200);
+      border-radius: var(--r-sm);
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-200);
+      white-space: nowrap;
+      font-family: 'Inter', sans-serif;
+      box-shadow: var(--shadow-sm);
+      opacity: 0;
+      transition: opacity 160ms;
+      pointer-events: none;
+    }
+    .fab:hover::before { opacity: 1; }
+
+    /* ── Note modal textarea ─────────────────── */
+    .modal-field {
+      position: relative;
+    }
+    .modal-field input,
+    .modal-field textarea {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1.5px solid var(--border-200);
+      border-radius: var(--r-sm);
+      padding: 13px 16px;
+      font-family: inherit;
+      font-size: 15px;
+      color: var(--text-100);
+      outline: none;
+      transition: all var(--dur-mid);
+    }
+    .modal-field input:focus,
+    .modal-field textarea:focus {
+      border-color: var(--border-focus);
+      background: rgba(139,92,246,0.04);
+      box-shadow: 0 0 0 3px rgba(139,92,246,0.1);
+    }
+    .modal-field input::placeholder,
+    .modal-field textarea::placeholder { color: var(--text-500); }
+    .modal-field textarea {
+      min-height: 180px;
+      resize: vertical;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .modal-field-lbl {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-400);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 7px;
+      display: block;
+    }
+
+    /* ── Delete confirm box ──────────────────── */
+    .del-box {
+      background: rgba(248,113,113,0.06);
+      border: 1px solid rgba(248,113,113,0.14);
+      border-radius: var(--r-md);
+      padding: 28px;
+      text-align: center;
+    }
+    .del-emo  { font-size: 44px; margin-bottom: 12px; }
+    .del-box p { font-size: 14px; color: var(--text-300); line-height: 1.7; }
+    .del-box strong { color: var(--text-100); font-weight: 700; }
+
+    /* ── Search highlight ────────────────────── */
+    mark {
+      background: rgba(251,191,36,0.3);
+      color: inherit;
+      border-radius: 2px;
+      padding: 0 1px;
+    }
+
+    /* ── Count badge ─────────────────────────── */
+    .count-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 9px;
+      border-radius: var(--r-full);
+      background: var(--bg-raised);
+      color: var(--text-400);
+      border: 1px solid var(--border-100);
+      margin-left: auto;
+    }
+
+    /* ── Sidebar recent list ─────────────────── */
+    .recent-list { display: flex; flex-direction: column; gap: 2px; }
+
+    .recent-item {
+      padding: 8px 10px;
+      border-radius: var(--r-sm);
+      cursor: pointer;
+      transition: background var(--dur-fast);
+      border: 1px solid transparent;
+    }
+    .recent-item:hover { background: rgba(255,255,255,0.04); border-color: var(--border-100); }
+
+    .recent-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-300);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 2px;
+    }
+    .recent-date { font-size: 10px; color: var(--text-500); }
+
+    /* ── Quick stats pill row ────────────────── */
+    .mini-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .mini-stat {
+      background: var(--bg-raised);
+      border: 1px solid var(--border-100);
+      border-radius: var(--r-sm);
+      padding: 10px 12px;
+      text-align: center;
+    }
+    .mini-stat-val { font-size: 20px; font-weight: 800; letter-spacing:-0.03em; color: var(--text-100); line-height: 1; }
+    .mini-stat-lbl { font-size: 10px; color: var(--text-500); margin-top: 3px; }
+
+    /* No results  */
+    .no-results {
+      grid-column: 1/-1;
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-400);
+    }
+    .no-results .nr-emoji { font-size: 40px; margin-bottom: 14px; }
+    .no-results h4 { font-size: 16px; font-weight: 700; color: var(--text-300); margin-bottom: 6px; }
+    .no-results p { font-size: 13px; }
+  </style>
+</head>
+<body>
+
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- ═══ Navbar ═══ -->
+  <nav class="navbar" role="navigation">
+    <a href="/" class="brand" aria-label="SecureVault home">
+      <div class="brand-icon">🔐</div>
+      <div class="brand-name">SecureVault</div>
+    </a>
+
+    <div class="nav-pill-group" role="navigation" aria-label="Main">
+      <a href="/dashboard.html" class="nav-pill active">📝 Notes</a>
+      <a href="/admin.html" class="nav-pill hidden" id="navAdmin">🛡️ Admin</a>
+    </div>
+
+    <div class="nav-right">
+      <a class="user-pill" href="#" onclick="return false;">
+        <div class="avatar" id="navAvatar">?</div>
+        <div>
+          <div class="user-name"  id="navUsername">Loading…</div>
+          <div class="user-role"  id="navRole">User</div>
+        </div>
+      </a>
+      <button class="btn btn-ghost btn-sm" onclick="handleLogout()" title="Sign out">👋 Out</button>
+    </div>
+  </nav>
+
+  <div class="app-wrap">
+
+    <!-- ═══ Sidebar ═══ -->
+    <aside class="sidebar" aria-label="Sidebar navigation">
+
+      <!-- Greeting card -->
+      <div class="greet-card">
+        <div class="greet-emoji" id="greetEmoji">☀️</div>
+        <div class="greet-hi" id="greetText">Good morning!</div>
+        <div class="greet-sub" id="greetSub">What are you thinking about today?</div>
+      </div>
+
+      <!-- Mini stats -->
+      <div class="mini-stats">
+        <div class="mini-stat">
+          <div class="mini-stat-val" id="msTotal">–</div>
+          <div class="mini-stat-lbl">Total notes</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-val" id="msPinned">–</div>
+          <div class="mini-stat-lbl">Pinned</div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <div class="sidebar-section">
+        <div class="sidebar-label">Views</div>
+        <div class="sidebar-link active" onclick="setFilter('all')" id="sv-all">
+          <span class="s-icon">📋</span> All notes
+          <span class="s-count" id="sv-all-cnt">0</span>
+        </div>
+        <div class="sidebar-link" onclick="setFilter('pinned')" id="sv-pin">
+          <span class="s-icon">📌</span> Pinned
+          <span class="s-count" id="sv-pin-cnt">0</span>
+        </div>
+        <div class="sidebar-link" onclick="setFilter('recent')" id="sv-rec">
+          <span class="s-icon">🕐</span> Recent
+        </div>
+      </div>
+
+      <!-- Recent list -->
+      <div class="sidebar-section" id="recentSection">
+        <div class="sidebar-label">Recent notes</div>
+        <div class="recent-list" id="recentList">
+          <div class="skeleton" style="height:48px; border-radius:var(--r-sm);"></div>
+          <div class="skeleton" style="height:48px; border-radius:var(--r-sm); margin-top:4px;"></div>
+          <div class="skeleton" style="height:48px; border-radius:var(--r-sm); margin-top:4px;"></div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="sidebar-footer">
+        <button class="btn btn-ghost btn-sm w-full" onclick="handleLogout()" style="justify-content:flex-start; gap:8px;">
+          👋 Sign out
+        </button>
+      </div>
+    </aside>
+
+    <!-- ═══ Main content ═══ -->
+    <main class="page">
+
+      <!-- Page header -->
+      <div class="page-head">
+        <div>
+          <div class="page-eyebrow">✍️ Your workspace</div>
+          <h1 class="page-title">My <span class="highlight">Notes</span></h1>
+          <p class="page-sub" id="pageSubtitle">Loading your notes…</p>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="search-field">
+          <span class="search-icon">🔍</span>
+          <input type="search" id="searchInput" placeholder="Search notes… (title or content)"
+            oninput="searchNotes(this.value)" aria-label="Search notes">
+        </div>
+
+        <div class="filter-pills" role="group" aria-label="Filter">
+          <button class="filter-pill active" id="fpAll"    onclick="setFilter('all')">All</button>
+          <button class="filter-pill"        id="fpPinned" onclick="setFilter('pinned')">📌 Pinned</button>
+          <button class="filter-pill"        id="fpRecent" onclick="setFilter('recent')">Recent</button>
+        </div>
+
+        <div class="view-toggle" role="group" aria-label="View mode">
+          <button class="view-btn active" id="viewGrid" onclick="setView('grid')" title="Grid view" aria-pressed="true">⊞</button>
+          <button class="view-btn"        id="viewList" onclick="setView('list')" title="List view" aria-pressed="false">☰</button>
+        </div>
+
+        <span class="count-badge" id="noteCountBadge"></span>
+      </div>
+
+      <!-- Notes grid -->
+      <div class="notes-grid" id="notesGrid" role="list" aria-label="Notes"></div>
+
+      <!-- Empty state -->
+      <div class="empty hidden" id="emptyState">
+        <div class="empty-art">
+          <svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="30" y="25" width="100" height="110" rx="12" fill="rgba(139,92,246,0.08)" stroke="rgba(139,92,246,0.2)" stroke-width="1.5"/>
+            <rect x="42" y="44" width="50" height="8" rx="4" fill="rgba(255,255,255,0.08)"/>
+            <rect x="42" y="58" width="76" height="6" rx="3" fill="rgba(255,255,255,0.05)"/>
+            <rect x="42" y="70" width="65" height="6" rx="3" fill="rgba(255,255,255,0.05)"/>
+            <rect x="42" y="82" width="72" height="6" rx="3" fill="rgba(255,255,255,0.04)"/>
+            <!-- pen -->
+            <path d="M105 100 L128 77 L135 84 L112 107 Z" fill="rgba(167,139,250,0.25)" stroke="rgba(167,139,250,0.45)" stroke-width="1.5"/>
+            <path d="M128 77 L134 71 L140 77 L135 84 Z" fill="rgba(244,63,94,0.35)" stroke="rgba(244,63,94,0.5)" stroke-width="1"/>
+            <path d="M105 100 L100 113 L112 107 Z" fill="rgba(255,255,255,0.15)"/>
+          </svg>
+        </div>
+        <h3>Nothing here yet</h3>
+        <p>Your first note is waiting to be written. Ideas, plans, or just random thoughts — all welcome.</p>
+        <button class="btn btn-primary" onclick="openModal()">✍️ Write something</button>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination hidden" id="pagination"></div>
+
+    </main>
+  </div>
+
+  <!-- ═══ FAB ═══ -->
+  <button class="fab" onclick="openModal()" aria-label="New note" title="New note (N)">+</button>
+
+  <!-- ═══ Security bar ═══ -->
+  <div class="sec-bar" role="status" aria-label="Security status">
+    <div class="sec-item"><div class="sec-pulse"></div> Session active</div>
+    <div class="sec-item"><div class="sec-pulse"></div> JWT secured</div>
+    <div class="sec-item"><div class="sec-pulse"></div> End-to-end validated</div>
+    <div class="sec-item"><div class="sec-pulse"></div> Rate limited</div>
+  </div>
+
+  <!-- ═══ Note modal ═══ -->
+  <div class="overlay" id="noteOverlay" role="dialog" aria-modal="true" aria-labelledby="noteModalTitle">
+    <div class="modal" style="max-width:580px;">
+      <div class="modal-head">
+        <h3 id="noteModalTitle">
+          <span id="modalEmoji">✏️</span>
+          <span id="modalTitleText">New Note</span>
+        </h3>
+        <button class="modal-close" onclick="closeModal()" aria-label="Close note editor">✕</button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- Title -->
+        <div class="modal-field">
+          <span class="modal-field-lbl">Title</span>
+          <input type="text" id="noteTitle" placeholder="What's on your mind?" maxlength="120"
+            aria-label="Note title" autofocus>
+        </div>
+
+        <!-- Content -->
+        <div class="modal-field">
+          <span class="modal-field-lbl">Content</span>
+          <textarea id="noteContent" placeholder="Your thoughts go here — no judgment, no limits…"
+            maxlength="10000" aria-label="Note content"
+            oninput="updateCharCount(this)"></textarea>
+        </div>
+
+        <!-- Pin toggle + char count -->
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div class="toggle-row" onclick="togglePin()" role="switch" aria-checked="false" tabindex="0"
+            id="pinRow" aria-label="Pin this note" onkeydown="if(event.key==='Enter'||event.key===' ')togglePin()">
+            <div class="toggle" id="pinToggle"></div>
+            <span class="toggle-lbl">📌 Pin this note</span>
+          </div>
+          <span class="char-count" id="charCount">0 / 10,000</span>
+        </div>
+
+      </div>
+
+      <div class="modal-foot">
+        <div style="flex:1; font-size:12px; color:var(--text-500); display:flex; align-items:center; gap:5px;">
+          <span>Tip:</span>
+          <span style="opacity:0.7;">Ctrl+Enter to save</span>
+        </div>
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveNote()" id="saveBtn">💾 Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Delete modal ═══ -->
+  <div class="overlay" id="deleteOverlay" role="dialog" aria-modal="true" aria-label="Delete note confirmation">
+    <div class="modal" style="max-width:400px;">
+      <div class="modal-head">
+        <h3>Delete note?</h3>
+        <button class="modal-close" onclick="closeDeleteModal()" aria-label="Cancel delete">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="del-box">
+          <div class="del-emo">🗑️</div>
+          <p>
+            <strong id="deleteNoteTitle">This note</strong> will be gone forever.<br>
+            There's no undo — are you sure?
+          </p>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="closeDeleteModal()">Nope, keep it</button>
+        <button class="btn btn-danger" onclick="confirmDelete()" id="confirmDeleteBtn">Yes, delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

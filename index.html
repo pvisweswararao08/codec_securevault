@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecureVault — Sign in</title>
+  <meta name="description" content="Sign in to SecureVault — your private, end-to-end authenticated note space.">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Trust strip at bottom of form */
+    .trust-strip {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border-100);
+      flex-wrap: wrap;
+    }
+    .trust-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--text-500);
+    }
+    .trust-item .ti { font-size: 13px; }
+
+    /* Social proof avatars */
+    .proof-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-100);
+      position: relative;
+      z-index: 1;
+    }
+    .proof-avatars { display: flex; }
+    .proof-avatars .avatar {
+      width: 28px; height: 28px;
+      font-size: 11px;
+      border: 2px solid var(--bg-raised);
+      margin-left: -8px;
+    }
+    .proof-avatars .avatar:first-child { margin-left: 0; }
+    .proof-text { font-size: 12px; color: var(--text-400); line-height: 1.5; }
+    .proof-text strong { color: var(--text-200); }
+
+    /* Keyboard hint */
+    .kbd {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border: 1px solid var(--border-200);
+      border-radius: 5px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-400);
+      background: rgba(255,255,255,0.03);
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <main class="auth-wrap">
+
+    <!-- ═══ LEFT: Brand story ═══ -->
+    <aside class="auth-left" aria-label="Product features">
+      <!-- SVG Illustration -->
+      <div class="auth-illo">
+        <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Glow -->
+          <circle cx="100" cy="100" r="80" fill="url(#glow)" opacity="0.35"/>
+          <!-- Shield body -->
+          <path d="M100 20 L160 50 L160 110 C160 145 130 170 100 180 C70 170 40 145 40 110 L40 50 Z"
+                fill="url(#shieldGrad)" stroke="rgba(167,139,250,0.4)" stroke-width="1.5"/>
+          <!-- Shield inner highlight -->
+          <path d="M100 30 L150 56 L150 110 C150 138 126 160 100 170"
+                stroke="rgba(255,255,255,0.15)" stroke-width="1" fill="none"/>
+          <!-- Lock body -->
+          <rect x="82" y="95" width="36" height="28" rx="6" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+          <!-- Lock shackle -->
+          <path d="M90 95 L90 85 C90 76 110 76 110 85 L110 95" stroke="rgba(255,255,255,0.4)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <!-- Lock keyhole -->
+          <circle cx="100" cy="107" r="4" fill="rgba(255,255,255,0.5)"/>
+          <rect x="98" y="107" width="4" height="8" rx="2" fill="rgba(255,255,255,0.5)"/>
+          <!-- Floating notes -->
+          <rect x="22" y="70" width="30" height="22" rx="5" fill="rgba(139,92,246,0.2)" stroke="rgba(139,92,246,0.35)" stroke-width="1"/>
+          <line x1="27" y1="78" x2="47" y2="78" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="27" y1="84" x2="42" y2="84" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linecap="round"/>
+          <rect x="148" y="55" width="30" height="22" rx="5" fill="rgba(244,63,94,0.18)" stroke="rgba(244,63,94,0.3)" stroke-width="1"/>
+          <line x1="153" y1="63" x2="173" y2="63" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="153" y1="69" x2="168" y2="69" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linecap="round"/>
+          <rect x="155" y="130" width="28" height="20" rx="5" fill="rgba(251,191,36,0.15)" stroke="rgba(251,191,36,0.28)" stroke-width="1"/>
+          <line x1="160" y1="138" x2="178" y2="138" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="160" y1="144" x2="173" y2="144" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linecap="round"/>
+          <!-- Check badge -->
+          <circle cx="135" cy="48" r="12" fill="url(#badgeGrad)" stroke="var(--bg-app)" stroke-width="2.5"/>
+          <path d="M130 48 L133 51 L140 44" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <defs>
+            <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#7c3aed"/>
+              <stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="rgba(139,92,246,0.35)"/>
+              <stop offset="100%" stop-color="rgba(99,102,241,0.2)"/>
+            </linearGradient>
+            <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#7c3aed"/>
+              <stop offset="100%" stop-color="#ec4899"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+
+      <h1>Your notes.<br>Your rules.</h1>
+      <p>A secure space built for your thoughts — private by design, protected by real cryptography.</p>
+
+      <ul class="feature-list" role="list">
+        <li class="feature-item">
+          <span class="feature-dot">🛡️</span>
+          <span>JWT auth with 15-min access tokens + 7-day refresh rotation</span>
+        </li>
+        <li class="feature-item">
+          <span class="feature-dot">🔑</span>
+          <span>Passwords hashed with bcrypt cost-12 — we never see them</span>
+        </li>
+        <li class="feature-item">
+          <span class="feature-dot">🚫</span>
+          <span>Account locks after 5 failed tries — brute-force stops here</span>
+        </li>
+        <li class="feature-item">
+          <span class="feature-dot">🧱</span>
+          <span>SQL injection blocked by ORM + input sanitisation on every field</span>
+        </li>
+        <li class="feature-item">
+          <span class="feature-dot">✅</span>
+          <span>Full OWASP Top 10 coverage, CSP headers, rate limiting</span>
+        </li>
+      </ul>
+
+      <!-- Social proof -->
+      <div class="proof-row">
+        <div class="proof-avatars">
+          <div class="avatar" style="background:linear-gradient(135deg,#8b5cf6,#ec4899)">A</div>
+          <div class="avatar" style="background:linear-gradient(135deg,#06b6d4,#3b82f6)">J</div>
+          <div class="avatar" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">M</div>
+          <div class="avatar" style="background:linear-gradient(135deg,#10b981,#14b8a6)">S</div>
+        </div>
+        <div class="proof-text">
+          <strong>Fully open source.</strong><br>
+          Every line of code is right there.
+        </div>
+      </div>
+    </aside>
+
+    <!-- ═══ RIGHT: Form ═══ -->
+    <section class="auth-right">
+      <div class="auth-form-wrap">
+
+        <!-- Brand -->
+        <div class="auth-brand">
+          <div class="brand-icon">🔐</div>
+          <div>
+            <div class="brand-name" style="font-size:19px; letter-spacing:-0.03em;">SecureVault</div>
+            <div style="font-size:11px; color:var(--text-500);">Secure note-keeping</div>
+          </div>
+        </div>
+
+        <!-- Welcome -->
+        <div class="auth-welcome-text" id="welcomeHead">Welcome back 👋</div>
+        <div class="auth-welcome-sub" id="welcomeSub">Sign in to your secure space — it's been a while.</div>
+
+        <!-- Tab bar -->
+        <div class="tab-bar" role="tablist" aria-label="Auth mode">
+          <button class="tab-pill active" id="tabLogin"    role="tab" aria-selected="true"  onclick="switchTab('login')">Sign in</button>
+          <button class="tab-pill"        id="tabRegister" role="tab" aria-selected="false" onclick="switchTab('register')">Create account</button>
+        </div>
+
+        <!-- Error alert -->
+        <div class="err-alert hidden" id="errAlert" role="alert">
+          <span>⚠️</span>
+          <span id="errMsg"></span>
+        </div>
+
+        <!-- ── Login form ── -->
+        <div class="form-panel active" id="panelLogin" role="tabpanel">
+          <form id="loginForm" onsubmit="handleLogin(event)" novalidate autocomplete="on">
+
+            <div style="display:flex;flex-direction:column;gap:14px;">
+              <!-- Username -->
+              <div class="field">
+                <input type="text" id="loginUser" name="username" placeholder=" "
+                  autocomplete="username" required maxlength="64">
+                <label for="loginUser">Username</label>
+                <span class="field-icon">👤</span>
+              </div>
+
+              <!-- Password -->
+              <div class="field">
+                <input type="password" id="loginPw" name="password" placeholder=" "
+                  autocomplete="current-password" required maxlength="128">
+                <label for="loginPw">Password</label>
+                <span class="field-icon">🔑</span>
+                <button type="button" class="pw-eye" id="loginEye"
+                  onclick="togglePw('loginPw','loginEye')" aria-label="Show password">👁</button>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-full btn-lg" id="loginBtn">
+                Sign in
+              </button>
+            </div>
+
+          </form>
+
+          <div class="divider">or</div>
+
+          <div class="callout callout-info" style="font-size:12px;">
+            <span class="callout-icon">💡</span>
+            <div class="callout-body">
+              Demo admin: <strong>admin</strong> / <strong>Admin@1234!</strong>
+              — change this before going live.
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Register form ── -->
+        <div class="form-panel" id="panelRegister" role="tabpanel">
+          <form id="registerForm" onsubmit="handleRegister(event)" novalidate autocomplete="on">
+
+            <div style="display:flex;flex-direction:column;gap:14px;">
+              <!-- Username -->
+              <div class="field">
+                <input type="text" id="regUser" name="username" placeholder=" "
+                  autocomplete="username" required minlength="3" maxlength="64">
+                <label for="regUser">Pick a username</label>
+                <span class="field-icon">👤</span>
+              </div>
+              <div class="field-msg hint" style="margin-top:-8px; padding-left:4px;">Letters, numbers, _ and – only</div>
+
+              <!-- Email -->
+              <div class="field">
+                <input type="email" id="regEmail" name="email" placeholder=" "
+                  autocomplete="email" required maxlength="120">
+                <label for="regEmail">Email address</label>
+                <span class="field-icon">✉️</span>
+              </div>
+
+              <!-- Password -->
+              <div>
+                <div class="field">
+                  <input type="password" id="regPw" name="password" placeholder=" "
+                    autocomplete="new-password" required minlength="8" maxlength="128"
+                    oninput="checkStrength(this.value)">
+                  <label for="regPw">Create a strong password</label>
+                  <span class="field-icon">🔒</span>
+                  <button type="button" class="pw-eye" id="regEye"
+                    onclick="togglePw('regPw','regEye')" aria-label="Show password">👁</button>
+                </div>
+
+                <!-- Strength bar -->
+                <div class="strength-bar" id="strengthBar">
+                  <div class="strength-seg" id="seg1"></div>
+                  <div class="strength-seg" id="seg2"></div>
+                  <div class="strength-seg" id="seg3"></div>
+                  <div class="strength-seg" id="seg4"></div>
+                </div>
+                <div class="strength-txt" id="strengthTxt">Type something…</div>
+
+                <!-- Rule checklist -->
+                <div class="pw-rules" id="pwRules">
+                  <div class="pw-rule" id="r-len"><span class="dot"></span>8+ characters</div>
+                  <div class="pw-rule" id="r-upper"><span class="dot"></span>Uppercase A–Z</div>
+                  <div class="pw-rule" id="r-lower"><span class="dot"></span>Lowercase a–z</div>
+                  <div class="pw-rule" id="r-num"><span class="dot"></span>A number</div>
+                  <div class="pw-rule" id="r-sym"><span class="dot"></span>Special char</div>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-full btn-lg" id="registerBtn">
+                Create my account 🚀
+              </button>
+            </div>
+
+          </form>
+        </div>
+
+        <!-- Trust strip -->
+        <div class="trust-strip">
+          <div class="trust-item"><span class="ti">🔒</span> TLS encrypted</div>
+          <div class="trust-item"><span class="ti">🛡️</span> OWASP compliant</div>
+          <div class="trust-item"><span class="ti">🔑</span> bcrypt hashed</div>
+          <div class="trust-item"><span class="ti">⚡</span> Rate limited</div>
+        </div>
+
+        <!-- Keyboard hint -->
+        <div style="text-align:center; margin-top:14px; font-size:11px; color:var(--text-500);">
+          Press <span class="kbd">Enter ↵</span> to submit
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <script src="js/auth.js"></script>
+</body>
+</html>
